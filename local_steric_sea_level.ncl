@@ -7,16 +7,16 @@ begin
 
 ;*****************************************************************************;
   ; I/O
-  varin = "RHO"
-  dirin = "/chuva/wk2/bruno/cesm_lens_slr/B20TRC5CNBDRD/"+varin+"/"
-  fin = "b.e11.B20TRC5CNBDRD.f09_g16.008.pop.h."+varin+".yr.192001-200512.nc"
-  filein = dirin + fin
+  ;varin = "RHO"
+  ;dirin = "/chuva/wk2/bruno/cesm_lens_slr/B20TRC5CNBDRD/"+varin+"/"
+  ;fin = "b.e11.B20TRC5CNBDRD.f09_g16.008.pop.h."+varin+".yr.192001-200512.nc"
+  ;filein = dirin + fin
   ;
-  varout = "ssl"
-  dirout = "./"
-  fout = "b.e11.B20TRC5CNBDRD.f09_g16.008.pop.h."+varout+".yr.192001-200512.nc"
-  fileout = dirout + fout
-  refyear = 1920
+  ;varout = "ssl"
+  ;dirout = "./"
+  ;fout = "b.e11.B20TRC5CNBDRD.f09_g16.008.pop.h."+varout+".yr.192001-200512.nc"
+  ;fileout = dirout + fout
+  ;refyear = 1920
 
 ;*****************************************************************************;
   ; reading variables
@@ -108,10 +108,10 @@ begin
 ;*****************************************************************************;
   ; write to netcdf
 
-  system("rm "+fout)
+  system("rm "+fileout)
   setfileoption("nc","Format","NetCDF4Classic")
   ; setfileoption("nc","CompressionLevel",3)    ; slow
-  out = addfile(fout,"c")
+  out = addfile(fileout,"c")
   out->ssl = ssl
   out->gmssl = gmssl
   out->TLONG = tlong
