@@ -5,11 +5,15 @@
 
 begin
 ;*****************************************************************************; 
-  filein = new(2,string)
+  ini_yr = 1993
+  fin_yr = 2007
+  ens_sz = 35
+;*****************************************************************************; 
 ;-[ensemble | 35, nlat | 384, nlon |320]
-  ssh_trend = new((/35,384,320/),float)
+  ssh_trend = new((/ens_sz,384,320/),float)
   ssh_trend!0 = "ensemble"
-  do fn = 1,35
+  filein = new(2,string)
+  do fn = 1,ens_sz
     fnstr = systemfunc("printf %03d\\n "+ tostring(fn))
     scenario = "B20TRC5CNBDRD"
     dirin = "/chuva/wk2/bruno/cesm_lens_slr/"+scenario+"/SSH/"
@@ -25,12 +29,13 @@ begin
     ListSetType (in, "cat") 
     time =in[:]->time
     tsz = dimsizes(time)
-    i2017 = tsz - (2100 - 2017) - 1
-    i1993 = i2017 - (2017-1993)
-    yyyy = cd_calendar(time(i1993:i2017), -1 )/100
+    ;resolve indexes
+    i_final = tsz - (2100 - fin_yr) - 1
+    i_init = i_final - (fin_yr-ini_yr)
+    yyyy = cd_calendar(time(i_init:i_final), -1 )/100
     ;print(yyyy)
 ;-read 25yrs ssh    
-    ssh = in[:]->SSH(i1993:i2017,:,:)
+    ssh = in[:]->SSH(i_init:i_final,:,:)
     ;printVarSummary(ssh)
 
 ;*****************************************************************************; 
@@ -59,7 +64,7 @@ begin
   ssh_trend@units     = "mm/year"
   ens_trend = dim_avg_n_Wrap(ssh_trend,0)
   ;printVarSummary(ens_trend)
-  figname = "ssh_trend_cesm_lens_1993_2017"  
+  figname = "ssh_trend_cesm_lens_"+ini_yr+"_"+fin_yr  
 
 ;*****************************************************************************; 
   wks  = gsn_open_wks("ps",figname)         ; send graphics to PNG file
@@ -76,11 +81,11 @@ begin
   res@cnFillMode            = "RasterFill"
 
   res@cnLevelSelectionMode  = "ManualLevels"   ; set manual contour levels
-  res@cnMinLevelValF        = -3.0            ; set min contour level
-  res@cnMaxLevelValF        =  3.0            ; set max contour level
+  res@cnMinLevelValF        = -3            ; set min contour level
+  res@cnMaxLevelValF        =  3            ; set max contour level
   res@cnLevelSpacingF       =  0.1            ; set contour interval
   res@lbLabelStride         =  10
-  res@cnFillPalette         = "BlueWhiteOrangeRed"
+  res@cnFillPalette         = "myBlueWhiteOrangeRed"
   res@lbBoxSeparatorLinesOn = False
   res@lbBoxEndCapStyle      = "TriangleBothEnds" 
   res@lbBoxLinesOn          = False
@@ -91,7 +96,7 @@ begin
   res@mpProjection          = "Robinson"
   res@mpPerimOn             = False
   res@mpLandFillColor       = "grey40"
-  res@tiMainString          = "CESM/LENS ssh trend: 25yr ensemble mean"
+  res@tiMainString          = "CESM/LENS ssh trend ("+ini_yr+ "-"+ fin_yr+"): ensemble mean"
   res@gsnLeftString = "Linear trend"
   
 ;*****************************************************************************; 
@@ -109,7 +114,7 @@ begin
 
 ;*****************************************************************************; 
 ;-Panel plot: True 
-  resP = True
+  resP = False
   if resP.eq.False then
     res@gsnDraw = True
     res@gsnFrame = True
@@ -127,7 +132,7 @@ begin
       res@gsnRightString = ""
       res@gsnLeftString = ""
       res@lbLabelBarOn = False
-      plot = new(35,graphic)
+      plot = new(ens_sz,graphic)
       do i=0,8
         fnstr = systemfunc("printf %03d\\n "+ tostring(i+1))
         res@gsnCenterString = "member #"+fnstr
@@ -143,4 +148,5 @@ begin
   end if
   delete(wks)
   system("convert -density 144 -rotate 270 -trim +repage -border 8 -bordercolor white "+figname+".ps "+figname+ ".png")
+  system("rm -f " + figname + ".ps")
 end
