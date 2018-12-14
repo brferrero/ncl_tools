@@ -151,66 +151,69 @@ local var_lat_adv_res_map, \
       FIELD1e, FIELD1w, FIELD2n, FIELD2s, MASK_3D, volc,vols,volw,work, work1, \
       time, work2, work3, work4, dz
 begin
-   work = vol3d				            ; Tcell_i,j
-   work1 = (/ eoshift(work,1,-1) /)		; Tcell_i-1,j
-   work2 = (/ eoshift(work,2,-1) /)		; Tcell_i,j-1
-   volc = work(klo:khi,:,:)
-   volw = work1(klo:khi,:,:)
-   vols = work2(klo:khi,:,:)
-   delete(work)
-   delete(work1)
-   delete(work2)
+    work = vol3d                        ; Tcell_i,j
+    ;shift nlon
+    work1 = (/ eoshift(work,2,-1) /)    ; Tcell_i-1,j
+    ;shift nlat
+    work2 = (/ eoshift(work,1,-1) /)    ; Tcell_i,j-1
+    volc = work(klo:khi,:,:)
+    volw = work1(klo:khi,:,:)
+    vols = work2(klo:khi,:,:)
+    delete(work)
+    delete(work1)
+    delete(work2)
 
-   ; initialize :
-   var_name1 = "UET"
-   var_name2 = "VNT"
-   f1 = addfile(fname1,"r")
-   f2 = addfile(fname2,"r")
-   time = f1->time(tlo:thi)
-   var_lat_adv_res_map = new((/ dimsizes(time), nlat, nlon /), "double")
-   var_lat_adv_res_map!0 = "time"
-   var_lat_adv_res_map&time = time
-   var_lat_adv_res_map!1 = "nlat"
-   var_lat_adv_res_map!2 = "nlon"
-   var_lat_adv_res_map@long_name = "lateral advective flux (resolved)"
-   var_lat_adv_res_map = 0.0
+    ; initialize :
+    var_name1 = "UET"
+    var_name2 = "VNT"
+    f1 = addfile(fname1,"r")
+    f2 = addfile(fname2,"r")
+    time = f1->time(tlo:thi)
+    var_lat_adv_res_map = new((/ dimsizes(time), nlat, nlon /), "double")
+    var_lat_adv_res_map!0 = "time"
+    var_lat_adv_res_map&time = time
+    var_lat_adv_res_map!1 = "nlat"
+    var_lat_adv_res_map!2 = "nlon"
+    var_lat_adv_res_map@long_name = "lateral advective flux (resolved)"
+    var_lat_adv_res_map = 0.0
 
-   ; advective flux variable name
-   var_lat_adv_res_map@description = "Int_z{-Div[<"+var_name1+">, <"+var_name2+">]}"
-   dz = f1->dz
-   zlo = f1->z_w(klo)
-   zhi = f1->z_w(khi+1)
-   var_lat_adv_res_map@k_range = tostring(klo)+" - "+tostring(khi)
-   var_lat_adv_res_map@depth_range = sprintf("%6.1f",zlo/100.)+"m -"+sprintf("%6.1f",zhi/100.)+"m"
+    ; advective flux variable name
+    var_lat_adv_res_map@description = "Int_z{-Div[<"+var_name1+">, <"+var_name2+">]}"
+    dz = f1->dz
+    zlo = f1->z_w(klo)
+    zhi = f1->z_w(khi+1)
+    var_lat_adv_res_map@k_range = tostring(klo)+" - "+tostring(khi)
+    var_lat_adv_res_map@depth_range = sprintf("%6.1f",zlo/100.)+"m -"+sprintf("%6.1f",zhi/100.)+"m"
 
-   FIELD1e = f1->$var_name1$(tlo:thi, klo:khi, :, :)
-   FIELD2n = f2->$var_name2$(tlo:thi, klo:khi, :, :)
-      if (isatt(FIELD1e, "scale_factor")) then
-         FIELD1e = (/ FIELD1e@scale_factor * FIELD1e /)
-         delete(FIELD1e@scale_factor)
-      end if
-      if (isatt(FIELD2n, "scale_factor")) then
-         FIELD2n = (/ FIELD2n@scale_factor * FIELD2n /)
-         delete(FIELD2n@scale_factor)
-      end if
-
-   FIELD1w = eoshift(FIELD1e,1,-1) 
-   FIELD2s = eoshift(FIELD2n,2,-1) 
-   work1 = todouble(FIELD1e)
+    FIELD1e = f1->$var_name1$(tlo:thi, klo:khi, :, :)
+    FIELD2n = f2->$var_name2$(tlo:thi, klo:khi, :, :)
+    if (isatt(FIELD1e, "scale_factor")) then
+        FIELD1e = (/ FIELD1e@scale_factor * FIELD1e /)
+        delete(FIELD1e@scale_factor)
+    end if
+    if (isatt(FIELD2n, "scale_factor")) then
+        FIELD2n = (/ FIELD2n@scale_factor * FIELD2n /)
+        delete(FIELD2n@scale_factor)
+    end if
+    
+    ;shift nlon
+    FIELD1w = eoshift(FIELD1e,2,-1) 
+    ;shift nlat
+    FIELD2s = eoshift(FIELD2n,1,-1) 
+    work1 = todouble(FIELD1e)
      work1 = (/ work1*conform(work1,volc,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
-   work2 = todouble(FIELD1w)
+    work2 = todouble(FIELD1w)
      work2 = (/ work2*conform(work2,volw,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
-   work3 = todouble(FIELD2n)	
+    work3 = todouble(FIELD2n)	
      work3 = (/ work3*conform(work3,volc,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
-   work4 = todouble(FIELD2s)	
+    work4 = todouble(FIELD2s)	
      work4 = (/ work4*conform(work4,vols,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
      
-   work1 = (work2-work1)+(work4-work3)
-   MASK_3D = where(volc.gt.0,1,0)
-   work1 = (/ work1*conform(work1,MASK_3D,(/1,2,3/)) /)
-   var_lat_adv_res_map = (/ dim_sum_n(work1,1) /)
-
-   return(var_lat_adv_res_map)
+    work1 = (work2-work1)+(work4-work3)
+    MASK_3D = where(volc.gt.0,1,0)
+    work1 = (/ work1*conform(work1,MASK_3D,(/1,2,3/)) /)
+    var_lat_adv_res_map = (/ dim_sum_n(work1,1) /)
+    return(var_lat_adv_res_map)
 end
 
 ;*****************************************************************************;
@@ -224,66 +227,71 @@ local var_lat_adv_res_map, \
       FIELD1e, FIELD1w, FIELD2n, FIELD2s, MASK_3D, volc,vols,volw,work, work1, \
       time, work2, work3, work4, dz
 begin
-   work = vol3d				            ; Tcell_i,j
-   work1 = (/ eoshift(work,1,-1) /)		; Tcell_i-1,j
-   work2 = (/ eoshift(work,2,-1) /)		; Tcell_i,j-1
-   volc = work(klo:khi,:,:)
-   volw = work1(klo:khi,:,:)
-   vols = work2(klo:khi,:,:)
-   delete(work)
-   delete(work1)
-   delete(work2)
+    work = vol3d                        ; Tcell_i,j
+    ;shift nlon
+    work1 = (/ eoshift(work,2,-1) /)    ; Tcell_i-1,j
+    ;shift nlat
+    work2 = (/ eoshift(work,1,-1) /)    ; Tcell_i,j-1
+    volc = work(klo:khi,:,:)
+    volw = work1(klo:khi,:,:)
+    vols = work2(klo:khi,:,:)
+    delete(work)
+    delete(work1)
+    delete(work2)
 
-   ; initialize :
-   var_name1 = "HDIFE_TEMP"
-   var_name2 = "HDIFN_TEMP"
-   f1 = addfile(fname1,"r")
-   f2 = addfile(fname2,"r")
-   time = f1->time(tlo:thi)
-   var_lat_mix_res_map = new((/ dimsizes(time), nlat, nlon /), "double")
-   var_lat_mix_res_map!0 = "time"
-   var_lat_mix_res_map&time = time
-   var_lat_mix_res_map!1 = "nlat"
-   var_lat_mix_res_map!2 = "nlon"
-   var_lat_mix_res_map@long_name = "lateral diffusive flux"
-   var_lat_mix_res_map = 0.0
+    ;initialize :
+    var_name1 = "HDIFE_TEMP"
+    var_name2 = "HDIFN_TEMP"
+    f1 = addfile(fname1,"r")
+    f2 = addfile(fname2,"r")
+    time = f1->time(tlo:thi)
+    var_lat_mix_res_map = new((/ dimsizes(time), nlat, nlon /), "double")
+    var_lat_mix_res_map!0 = "time"
+    var_lat_mix_res_map&time = time
+    var_lat_mix_res_map!1 = "nlat"
+    var_lat_mix_res_map!2 = "nlon"
+    var_lat_mix_res_map@long_name = "lateral diffusive flux"
+    var_lat_mix_res_map = 0.0
 
-   ; mixective flux variable name
-   var_lat_mix_res_map@description = "Int_z{-Div[<"+var_name1+">, <"+var_name2+">]}"
-   dz = f1->dz
-   zlo = f1->z_w(klo)
-   zhi = f1->z_w(khi+1)
-   var_lat_mix_res_map@k_range = tostring(klo)+" - "+tostring(khi)
-   var_lat_mix_res_map@depth_range = sprintf("%6.1f",zlo/100.)+"m -"+sprintf("%6.1f",zhi/100.)+"m"
+    ; mixective flux variable name
+    var_lat_mix_res_map@description = "Int_z{-Div[<"+var_name1+">, <"+var_name2+">]}"
+    dz = f1->dz
+    zlo = f1->z_w(klo)
+    zhi = f1->z_w(khi+1)
+    var_lat_mix_res_map@k_range = tostring(klo)+" - "+tostring(khi)
+    var_lat_mix_res_map@depth_range = sprintf("%6.1f",zlo/100.)+"m -"+sprintf("%6.1f",zhi/100.)+"m"
 
-   FIELD1e = f1->$var_name1$(tlo:thi, klo:khi, :, :)
-   FIELD2n = f2->$var_name2$(tlo:thi, klo:khi, :, :)
-      if (isatt(FIELD1e, "scale_factor")) then
-         FIELD1e = (/ FIELD1e@scale_factor * FIELD1e /)
-         delete(FIELD1e@scale_factor)
-      end if
-      if (isatt(FIELD2n, "scale_factor")) then
-         FIELD2n = (/ FIELD2n@scale_factor * FIELD2n /)
-         delete(FIELD2n@scale_factor)
-      end if
+    FIELD1e = f1->$var_name1$(tlo:thi, klo:khi, :, :)
+    FIELD2n = f2->$var_name2$(tlo:thi, klo:khi, :, :)
+    if (isatt(FIELD1e, "scale_factor")) then
+        FIELD1e = (/ FIELD1e@scale_factor * FIELD1e /)
+        delete(FIELD1e@scale_factor)
+    end if
+    if (isatt(FIELD2n, "scale_factor")) then
+        FIELD2n = (/ FIELD2n@scale_factor * FIELD2n /)
+        delete(FIELD2n@scale_factor)
+    end if
 
-   FIELD1w = eoshift(FIELD1e,1,-1) 
-   FIELD2s = eoshift(FIELD2n,2,-1) 
-   work1 = todouble(FIELD1e)
+    ;shift nlon
+    FIELD1w = eoshift(FIELD1e,2,-1) 
+    ;shift nlat
+    FIELD2s = eoshift(FIELD2n,1,-1) 
+    work1 = todouble(FIELD1e)
      work1 = (/ work1*conform(work1,volc,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
-   work2 = todouble(FIELD1w)
+    work2 = todouble(FIELD1w)
      work2 = (/ work2*conform(work2,volw,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
-   work3 = todouble(FIELD2n)	
+    work3 = todouble(FIELD2n)	
      work3 = (/ work3*conform(work3,volc,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
-   work4 = todouble(FIELD2s)	
+    work4 = todouble(FIELD2s)	
      work4 = (/ work4*conform(work4,vols,(/1,2,3/)) /)	; e.g., "degC cm^3/s"
      
-   work1 = (work1-work2)+(work3-work4)
-   MASK_3D = where(volc.gt.0,1,0)
-   work1 = (/ work1*conform(work1,MASK_3D,(/1,2,3/)) /)
-   var_lat_mix_res_map = (/ dim_sum_n(work1,1) /)
-
-   return(var_lat_mix_res_map)
+    ;work1 = (work1-work2)+(work3-work4)
+    work1 = (work2-work1)+(work4-work3)
+    MASK_3D = where(volc.gt.0,1,0)
+    work1 = (/ work1*conform(work1,MASK_3D,(/1,2,3/)) /)
+    var_lat_mix_res_map = (/ dim_sum_n(work1,1) /)
+    
+    return(var_lat_mix_res_map)
 end
 
 ;*****************************************************************************;
@@ -295,7 +303,7 @@ begin
     nx = nlon
     ny = nlat
    
-    volc = vol3d				; Tcell_i,j
+    volc = vol3d        ; Tcell_i,j
     
     ; k-slice or k-full
     if (khi.eq.nz) then

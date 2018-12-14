@@ -8,8 +8,8 @@ begin
     nz = 60
     klo = 0
     khi = 25
-    tlo = 912
-    thi = 1031
+    tlo = 491
+    thi = 610
     dir_root = "/chuva/db2/CESM-LENS/download/budget/"
     fout = "temp_budget.nc"
 
