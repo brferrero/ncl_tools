@@ -485,5 +485,70 @@ begin
     var_vert_mix_map = where(ismissing(var_vert_mix_map),0.0,var_vert_mix_map)
     return(var_vert_mix_map)
 end
+
+;*****************************************************************************;
+undef("tracer_budget_sflux")
+function tracer_budget_sflux (tracer_name:string, var_name:string, fname:string, tlo:integer, thi:integer,\ 
+            nlon:integer, nlat:integer, klo:integer, khi:integer,vol3d[*][*][*]:double,\
+            annual_cycle:logical, ssh_flag:logical, fssh:string)
+local var_sflux_map, fnames, fnames_tracer, i0, i1, nx, lhi, llo, khip1, file_ind, f, f_tracer, tlen_file, \
+      FIELD, FIELD_TOP, FIELD_BOT, work, work1, work2, MASK_2D, dz
+; compute domain-specific maps of tracer surface fluxes
+; fluxes are positive down
+begin
+ 
+    ; Determine appropriate scale factors
+    scale_factor = 1.D
+    if (tracer_name .eq. "TEMP") then
+        f = addfile(fssh, "r")
+        rho_sw = f->rho_sw              ; density of saltwater (g/cm^3)
+        rho_sw = rho_sw * 1.e-3         ; (kg/cm^3)
+        cp_sw = f->cp_sw                ; spec. heat of saltwater (erg/g/K)
+        cp_sw = cp_sw * 1.e-7 * 1.e3    ; (J/kg/K)
+        rho_cp = rho_sw * cp_sw         ; (J/cm^3/K)
+        latvap = f->latent_heat_vapor   ; lat heat of vaporiz. (J/kg)
+        latfus = f->latent_heat_fusion  ; lat heat of fusion (erg/g)
+        latfus = latfus * 1.e-7 * 1.e3  ; (J/kg)
+
+        if (any(var_name .eq. (/"SHF","QFLUX","SENH_F","LWDN_F","LWUP_F","SHF_QSW","MELTH_F"/))) then
+            scale_factor = 1.e-4 * (1./rho_cp)          ; W/m^2 -> degC cm/s
+        end if
+        if (var_name .eq. "EVAP_F") then
+            scale_factor = latvap*1.e-4 * (1./rho_cp)   ; kg/m^2/s -> degC cm/s
+        end if
+        if (any(var_name .eq. (/"SNOW_F","IOFF_F"/))) then
+            scale_factor = -latfus*1.e-4 * (1./rho_cp)  ; kg/m^2/s -> degC cm/s
+        end if
+        delete(f)
+    end if
+
+    f1 = addfile(fname, "r")
+    time = f1->time(tlo:thi)
+    ; initialize :
+    var_sflux_map = new((/ dimsizes(time), nlat, nlon /), "double")
+    var_sflux_map!0 = "time"
+    var_sflux_map&time = time
+    var_sflux_map!1 = "nlat"
+    var_sflux_map!2 = "nlon"
+    var_sflux_map@long_name = "vertical flux across sea surface"
+    var_sflux_map = 0.0
+
+    dz = f1->dz
+    zlo = f1->z_w(klo)
+    zhi = f1->z_w(khi+1)
+    var_sflux_map@k_range = tostring(klo)+" - "+tostring(khi)
+    var_sflux_map@depth_range = sprintf("%6.1f",zlo/100.)+"m -"+sprintf("%6.1f",zhi/100.)+"m"
+    TAREA = f1->TAREA
+    KMT = f1->KMT
+
+    FIELD = f1->$var_name$(tlo:thi,:,:)
+    work1 = scale_factor*FIELD
+
+    MASK_2D = where(klo .eq. 0 .and. klo .lt. KMT, 1.0, 0.0)
+    work2 = work1*conform(work1,TAREA*MASK_2D,(/1,2/))  ; e.g., "degC cm^3/s"
+    ; note fluxes positive down!
+    var_sflux_map = (/ work2 /)         
+    return(var_sflux_map)
+end
 ;*****************************************************************************;
 
